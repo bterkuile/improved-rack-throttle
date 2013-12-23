@@ -26,10 +26,18 @@ module Rack; module Throttle
     def allowed?(request)
       t1 = request_start_time(request)
       key = cache_key(request)
-      bucket = cache_get(key) rescue nil
-      bucket ||= LeakyBucket.new(options[:burst], options[:average])
-      bucket.maximum, bucket.outflow = options[:burst], options[:average]
-      bucket.leak! 
+      begin
+        bucket_info_str = cache_get(key).to_s
+        ary = bucket_info_str.split(',')
+        bucket_count = ary[0].to_i
+        time_number = ary[1].to_f
+      rescue
+        bucket_count = 0
+        time_number = Time.now.to_f
+      end
+      bucket = LeakyBucket.new(options[:burst], options[:average], bucket_count, time_number)
+      #bucket.maximum, bucket.outflow = options[:burst], options[:average]
+      bucket.leak!
       bucket.increment!
       allowed = !bucket.full?
       begin
@@ -56,18 +64,18 @@ module Rack; module Throttle
       ##
       # @param [Integer] maximum
       # @param [Float] outflow
-      def initialize(maximum, outflow)
+      def initialize(maximum, outflow, count, time_number)
         @maximum, @outflow = maximum, outflow
-        @count, @last_touched = 0, Time.now
+        @count, @last_touched = count, Time.at(time_number)
       end
 
       def leak!
         t = Time.now
-        time = t - last_touched
-        loss = (outflow * time).to_f
+        time_elapsed = t - last_touched
+        loss = (outflow * time_elapsed).floor
         if loss > 0
           @count -= loss
-          @last_touched = t 
+          @last_touched = t
         end
       end
 
@@ -75,6 +83,10 @@ module Rack; module Throttle
         @count = 0 if count < 0
         @count += 1
         @count = maximum if count > maximum
+      end
+
+      def to_s
+        [count, @last_touched.to_f].join(',')
       end
 
       def full?
