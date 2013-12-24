@@ -11,6 +11,7 @@ module Rack
     autoload :VERSION,          'rack/throttle/version'
     autoload :Matcher,          'rack/throttle/matchers/matcher'
     autoload :UrlMatcher,       'rack/throttle/matchers/url_matcher'
+    autoload :ExcludeUrlMatcher,'rack/throttle/matchers/exclude_url_matcher'
     autoload :MethodMatcher,    'rack/throttle/matchers/method_matcher'
     autoload :UserAgentMatcher, 'rack/throttle/matchers/user_agent_matcher'
   end
